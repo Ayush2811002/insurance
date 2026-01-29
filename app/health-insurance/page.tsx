@@ -103,7 +103,7 @@ export default function HealthInsuranceQuote() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 pt-8 pb-36">
         <div className="flex items-center gap-4 mb-8">
           {currentStep > 0 && (
             <button
