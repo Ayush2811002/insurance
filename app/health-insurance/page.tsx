@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Shield } from "lucide-react";
 import Link from "next/link";
+
+// Firebase
+import { ref, push, update } from "firebase/database";
+import { db } from "@/lib/firebase";
+
+// Steps
 import { GenderMemberStep } from "@/components/quote-steps/gender-member-step";
 import { AgeSelectionStep } from "@/components/quote-steps/age-selection-step";
 import { CitySelectionStep } from "@/components/quote-steps/city-selection-step";
@@ -11,6 +17,7 @@ import { BasicDetailsStep } from "@/components/quote-steps/basic-details-step";
 import { MedicalHistoryStep } from "@/components/quote-steps/medical-history-step";
 import { PlansResultStep } from "@/components/quote-steps/plans-result-step";
 
+// ---------------- TYPES ----------------
 export interface Member {
   id: string;
   type: string;
@@ -38,8 +45,11 @@ const STEPS = [
   "View Plans",
 ];
 
+// ---------------- COMPONENT ----------------
 export default function HealthInsuranceQuote() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
   const [quoteData, setQuoteData] = useState<QuoteData>({
     gender: "male",
     members: [],
@@ -50,17 +60,40 @@ export default function HealthInsuranceQuote() {
     whatsappUpdates: true,
   });
 
+  // ---------------- CREATE FIREBASE SESSION (ONCE) ----------------
+  useEffect(() => {
+    const sessionRef = push(ref(db, "healthQuotes"));
+    setSessionId(sessionRef.key);
+
+    update(ref(db, `healthQuotes/${sessionRef.key}`), {
+      createdAt: Date.now(),
+      currentStep: 0,
+    });
+  }, []);
+
+  // ---------------- AUTO-SAVE ON EVERY CHANGE ----------------
+  useEffect(() => {
+    if (!sessionId) return;
+
+    update(ref(db, `healthQuotes/${sessionId}`), {
+      quoteData,
+      currentStep,
+      lastUpdated: Date.now(),
+    });
+  }, [quoteData, currentStep, sessionId]);
+
+  // ---------------- HELPERS ----------------
   const progress = ((currentStep + 1) / STEPS.length) * 100;
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
@@ -68,6 +101,7 @@ export default function HealthInsuranceQuote() {
     setQuoteData((prev) => ({ ...prev, ...data }));
   };
 
+  // ---------------- UI ----------------
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -88,6 +122,7 @@ export default function HealthInsuranceQuote() {
             </span>
           </div>
         </div>
+
         {/* Progress Bar */}
         <div className="h-1.5 bg-muted">
           <motion.div
@@ -97,12 +132,13 @@ export default function HealthInsuranceQuote() {
             transition={{ duration: 0.3 }}
           />
         </div>
+
         <div className="text-center text-xs text-muted-foreground py-1 bg-muted/50">
           {Math.round(progress)}% complete
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="max-w-4xl mx-auto px-4 pt-8 pb-36">
         <div className="flex items-center gap-4 mb-8">
           {currentStep > 0 && (
@@ -130,6 +166,7 @@ export default function HealthInsuranceQuote() {
                 onNext={handleNext}
               />
             )}
+
             {currentStep === 1 && (
               <AgeSelectionStep
                 data={quoteData}
@@ -137,6 +174,7 @@ export default function HealthInsuranceQuote() {
                 onNext={handleNext}
               />
             )}
+
             {currentStep === 2 && (
               <CitySelectionStep
                 data={quoteData}
@@ -144,6 +182,7 @@ export default function HealthInsuranceQuote() {
                 onNext={handleNext}
               />
             )}
+
             {currentStep === 3 && (
               <BasicDetailsStep
                 data={quoteData}
@@ -151,6 +190,7 @@ export default function HealthInsuranceQuote() {
                 onNext={handleNext}
               />
             )}
+
             {currentStep === 4 && (
               <MedicalHistoryStep
                 data={quoteData}
@@ -158,6 +198,7 @@ export default function HealthInsuranceQuote() {
                 onNext={handleNext}
               />
             )}
+
             {currentStep === 5 && (
               <PlansResultStep
                 data={quoteData}
@@ -168,7 +209,7 @@ export default function HealthInsuranceQuote() {
         </AnimatePresence>
       </main>
 
-      {/* Footer Stats */}
+      {/* Footer */}
       {currentStep < 5 && (
         <footer className="fixed bottom-0 left-0 right-0 bg-muted/80 backdrop-blur-sm border-t border-border py-4">
           <div className="max-w-4xl mx-auto px-4 flex items-center justify-between text-sm">
@@ -180,6 +221,7 @@ export default function HealthInsuranceQuote() {
               <br />
               digital insurance platform
             </p>
+
             <div className="flex items-center gap-8">
               <div className="text-center">
                 <p className="text-lg font-bold text-primary">10,000+</p>
